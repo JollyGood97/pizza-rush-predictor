@@ -13,6 +13,7 @@ PROMOTIONS = {
     "Family bundle": "family_bundle",
     "Percent off": "percent_off",
 }
+shop_name = st.secrets.get("SHOP_NAME", "Pizza Rush Predictor")
 
 
 @st.cache_resource
@@ -41,7 +42,7 @@ def make_prediction_input(selected_date: date, hour: int, promotion: str) -> pd.
 
 st.set_page_config(page_title="Pizza Rush Predictor", page_icon="🍕", layout="centered")
 
-st.title("🍕 Pizza Rush Predictor")
+st.title(shop_name)
 st.write("Choose a time and promotion to estimate how many pizza orders to expect.")
 
 if not MODEL_PATH.exists():
