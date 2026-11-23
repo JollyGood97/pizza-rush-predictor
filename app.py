@@ -13,7 +13,10 @@ PROMOTIONS = {
     "Family bundle": "family_bundle",
     "Percent off": "percent_off",
 }
-shop_name = st.secrets.get("SHOP_NAME", "Pizza Rush Predictor")
+try:
+    shop_name = st.secrets.get("SHOP_NAME", "Pizza Rush Predictor")
+except FileNotFoundError:
+    shop_name = "Pizza Rush Predictor"
 
 
 @st.cache_resource
@@ -62,7 +65,7 @@ with st.form("prediction_form"):
     selected_date = st.date_input("Date", value=date.today())
     selected_hour = st.slider("Hour of day", min_value=0, max_value=23, value=19)
     selected_promotion_label = st.selectbox("Promotion", options=list(PROMOTIONS))
-    submitted = st.form_submit_button("Predict orders", type="primary", use_container_width=True)
+    submitted = st.form_submit_button("Predict orders", type="primary", width="stretch")
 
 if submitted:
     input_row = make_prediction_input(
