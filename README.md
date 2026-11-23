@@ -11,6 +11,7 @@ pipeline with Joblib, and loads it in a Streamlit web app.
 - Train and evaluate a Random Forest regression model.
 - Save preprocessing and the trained model as one reusable pipeline.
 - Load the saved pipeline in a Streamlit application for inference.
+- Use streamlit UI for interacting with the model with making sample predictions.
 
 ## Project structure
 
@@ -33,7 +34,7 @@ you do not need to run the notebook before starting the app.
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/JollyGood97/pizza-rush-predictor
 cd pizza-rush-predictor
 ```
 
