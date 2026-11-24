@@ -4,14 +4,20 @@ A beginner-friendly model deployment example for predicting hourly pizza orders.
 The project trains a scikit-learn pipeline in a Jupyter notebook, saves the fitted
 pipeline with Joblib, and loads it in a Streamlit web app.
 
-## What can this project do
+## What is included in this project
 
-- Load and inspect a dataset with pandas.
-- Prepare categorical and numeric features.
+### Jupyter Notebook
+
+- Load and explore a dataset with pandas.
+- Prepare categorical and numerical features.
 - Train and evaluate a Random Forest regression model.
-- Save preprocessing and the trained model as one reusable pipeline.
-- Load the saved pipeline in a Streamlit application for inference.
-- Use streamlit UI for interacting with the model with making sample predictions.
+- Save the preprocessing steps and trained model as a reusable pipeline.
+
+### Streamlit App with Testing & Monitoring
+
+- Load the saved pipeline and use it for inference.
+- Make sample predictions through an interactive Streamlit interface.
+- Explore model testing and monitoring through interactive simulations.
 
 ## Project structure
 
@@ -143,6 +149,41 @@ notebook.
 
 Confirm that `models/pizza_order_pipeline.joblib` was downloaded with the
 repository. Alternatively, run the notebook through its final save cell.
+
+## Workshop tabs
+
+- **Predict** keeps the original prediction workflow with valid shop hours and supported promotions.
+- **Testing Lab** demonstrates valid-input, invalid-input, and model-error checks without retraining.
+- **Monitoring** processes synthetic incoming orders one hour at a time and compares predictions with outcomes.
+
+## Synthetic incoming orders
+
+`data/incoming_orders.csv` is a reproducible **synthetic** dataset for 2026. It uses the same six columns as the historical 2025 dataset, but none of its rows were used to train or evaluate the existing model.
+
+- Random seed: `2026`
+- Normal period: 1 January–31 August 2026
+- Simulated demand shift: **1 September 2026**
+- Scenario: a nearby competitor closes, adding demand under otherwise similar conditions
+
+## Try the monitoring simulation
+
+1. Start the app and open **Monitoring**.
+2. Download the included CSV from the tab, or choose `data/incoming_orders.csv` with the uploader.
+3. Click **Next hour** to process records one at a time.
+4. For a classroom demonstration, click **Jump to demand shift**. The app loads the previous 48 hours for comparison and pauses at 1 September 2026.
+5. Click **Next hour** again to enter the shifted-demand period and watch the errors change.
+6. Watch actual versus predicted orders, cumulative MAE, and 24-hour rolling MAE.
+7. Use **Reset simulation** to return to the first record.
+
+The demand-shift marker appears when the simulation reaches 1 September 2026. The warning is based on a material increase in the latest 24-hour MAE compared with the previous 24 hours. This is a learning simulation, not actual live traffic.
+
+## Run the checks
+
+The in-app **Testing Lab** contains five explained checks. The same core behavior can also be checked from PowerShell:
+
+```powershell
+python -m unittest -v test_app_logic.py
+```
 
 ## Note
 
