@@ -8,11 +8,14 @@ import pandas as pd
 
 RANDOM_SEED = 2026
 SHIFT_START = pd.Timestamp("2026-09-01")
+DATA_DRIFT_START = pd.Timestamp("2026-10-01")
 OUTPUT_PATH = Path(__file__).parent / "data" / "incoming_orders.csv"
 
 
-def choose_promotion(rng: np.random.Generator, hour: int, weekday: int) -> str:
+def choose_promotion(rng: np.random.Generator, hour: int, weekday: int, data_drift: bool = False) -> str:
     draw = rng.random()
+    if data_drift and draw < 0.55:
+        return "percent_off"
     if weekday < 5 and 11 <= hour <= 14 and draw < 0.13:
         return "lunch_special"
     if weekday in (4, 5, 6) and 17 <= hour <= 21 and draw < 0.11:
@@ -49,7 +52,7 @@ def generate() -> pd.DataFrame:
         elif timestamp.month == 1 and timestamp.day <= 3:
             holiday_factor = 1.10
         for hour in range(11, 23):
-            promotion = choose_promotion(rng, hour, weekday)
+            promotion = choose_promotion(rng, hour, weekday, timestamp >= DATA_DRIFT_START)
             expected = (
                 17.5
                 * day_factor
@@ -88,3 +91,4 @@ if __name__ == "__main__":
     incoming.to_csv(OUTPUT_PATH, index=False)
     print(f"Created {len(incoming):,} synthetic rows at {OUTPUT_PATH}")
     print(f"Demand shift begins: {SHIFT_START.date()}")
+    print(f"Promotion mix shift begins: {DATA_DRIFT_START.date()}")

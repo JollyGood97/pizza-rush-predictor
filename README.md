@@ -164,18 +164,19 @@ repository. Alternatively, run the notebook through its final save cell.
 - Normal period: 1 January–31 August 2026
 - Simulated demand shift: **1 September 2026**
 - Scenario: a nearby competitor closes, adding demand under otherwise similar conditions
+- Simulated data drift: **1 October 2026**; percent-off promotions become much more common
 
 ## Try the monitoring simulation
 
 1. Start the app and open **Monitoring**.
 2. Download the included CSV from the tab, or choose `data/incoming_orders.csv` with the uploader.
-3. Click **Next hour** to process records one at a time.
-4. For a classroom demonstration, click **Jump to demand shift**. The app loads the previous 48 hours for comparison and pauses at 1 September 2026.
-5. Click **Next hour** again to enter the shifted-demand period and watch the errors change.
+3. Click **Play** to advance automatically at one hour per second, or **Next hour** for single steps. **Pause** stops playback.
+4. For a classroom demonstration, click **Jump to demand shift** or **Jump to data drift**. The app loads the previous 48 hours for comparison and pauses at the chosen change.
+5. Click **Play** or **Next hour** to enter the shifted-demand period and watch the errors change.
 6. Watch actual versus predicted orders, cumulative MAE, and 24-hour rolling MAE.
 7. Use **Reset simulation** to return to the first record.
 
-The demand-shift marker appears when the simulation reaches 1 September 2026. The warning is based on a material increase in the latest 24-hour MAE compared with the previous 24 hours. This is a learning simulation, not actual live traffic.
+The demand-shift marker appears on 1 September. The promotion-mix marker appears on 1 October, and the last-48-hour percent-off share shows the input change. The warning is based on a material increase in the latest 24-hour MAE compared with the previous 24 hours. This is a learning simulation, not actual live traffic.
 
 ## Run the checks
 

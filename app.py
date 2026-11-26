@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from app_logic import (
-    CLOSING_HOUR, EXPECTED_INCOMING_COLUMNS, OPENING_HOUR, PROMOTION_LABELS,
+    CLOSING_HOUR, DATA_DRIFT_START, EXPECTED_INCOMING_COLUMNS, OPENING_HOUR, PROMOTION_LABELS,
     ROLLING_WINDOW, SHIFT_START, InputValidationError, PredictionError,
     monitoring_warning, predict_orders, run_testing_lab, validate_incoming_data,
 )
@@ -35,6 +35,7 @@ def reset_monitoring_state(source_key: str | None = None) -> None:
     st.session_state.monitor_source_key = source_key
     st.session_state.monitor_index = 0
     st.session_state.monitor_history = []
+    st.session_state.monitor_playing = False
 
 
 def initialize_state() -> None:
@@ -42,6 +43,7 @@ def initialize_state() -> None:
     st.session_state.setdefault("monitor_source_key", None)
     st.session_state.setdefault("monitor_index", 0)
     st.session_state.setdefault("monitor_history", [])
+    st.session_state.setdefault("monitor_playing", False)
 
 
 def render_predict_tab(model) -> None:
@@ -121,6 +123,11 @@ def build_monitoring_chart(history: pd.DataFrame) -> go.Figure:
             x=SHIFT_START.to_pydatetime(), line_dash="dash", line_color="orange",
             annotation_text="Demand shift begins", annotation_position="top left",
         )
+    if history["timestamp"].max() >= DATA_DRIFT_START:
+        figure.add_vline(
+            x=DATA_DRIFT_START.to_pydatetime(), line_dash="dot", line_color="purple",
+            annotation_text="Promotion mix changes", annotation_position="top right",
+        )
     figure.update_layout(
         title="Actual vs predicted incoming orders", xaxis_title="Simulated production time",
         yaxis_title="Orders per hour", hovermode="x unified",
@@ -136,7 +143,7 @@ def render_monitoring_explanations() -> None:
             """
 **Monitoring predictions against outcomes:** A prediction is useful only when we later compare it with what actually happened. Absolute error measures the gap for one hour; MAE averages those gaps.
 
-**Data drift:** The inputs change—for example, customers start using different promotions or ordering at different hours.
+**Data drift:** The inputs change. From 1 October, this synthetic shop uses percent-off promotions much more often. Watch the promotion share below rise.
 
 **Concept drift:** The relationship between the inputs and orders changes. In this simulation, a competitor closes, so the same hour and promotion can produce more orders than before.
 
@@ -165,11 +172,12 @@ def process_monitoring_record(model, row: pd.Series) -> dict:
     }
 
 
+@st.fragment(run_every="1s")
 def render_monitoring_tab(model) -> None:
     st.header("Monitoring simulation")
     st.warning("This is simulated production monitoring using synthetic 2026 records—not genuine live traffic.")
     st.write(
-        "Upload `data/incoming_orders.csv`. Each click processes one unseen incoming hour, then "
+        "Upload `data/incoming_orders.csv`. Play or process one unseen hour at a time, then "
         "compares the existing model's prediction with the synthetic actual outcome."
     )
     if INCOMING_PATH.exists():
@@ -203,26 +211,40 @@ def render_monitoring_tab(model) -> None:
     )
     st.caption(
         "The documented demand shift begins on 1 September 2026, when a simulated nearby "
-        "competitor closes. All 2026 rows are separate from the model's 2025 training and test data."
+        "competitor closes. Promotion use changes on 1 October 2026 (data drift). "
+        "All 2026 rows are separate from the model's 2025 training and test data."
     )
     with st.container(horizontal=True):
+        play_clicked = st.button(
+            "Pause" if st.session_state.monitor_playing else "Play",
+            icon=":material/pause:" if st.session_state.monitor_playing else ":material/play_arrow:",
+            disabled=st.session_state.monitor_index >= len(incoming),
+        )
         next_clicked = st.button(
             "Next hour", type="primary", icon=":material/skip_next:",
-            disabled=st.session_state.monitor_index >= len(incoming),
+            disabled=st.session_state.monitor_index >= len(incoming) or st.session_state.monitor_playing,
         )
         jump_clicked = st.button(
             "Jump to demand shift",
             icon=":material/fast_forward:",
             help="Loads the previous 48 hours for comparison, then pauses at 1 September 2026.",
         )
+        data_jump_clicked = st.button(
+            "Jump to data drift", icon=":material/fast_forward:",
+            help="Loads the previous 48 hours, then pauses at 1 October 2026.",
+        )
         reset_clicked = st.button("Reset simulation", icon=":material/replay:")
     if reset_clicked:
         reset_monitoring_state(source_key)
         st.rerun()
-    if jump_clicked:
-        shift_rows = incoming.index[incoming["date"] >= SHIFT_START]
+    if play_clicked:
+        st.session_state.monitor_playing = not st.session_state.monitor_playing
+    if jump_clicked or data_jump_clicked:
+        st.session_state.monitor_playing = False
+        target = DATA_DRIFT_START if data_jump_clicked else SHIFT_START
+        shift_rows = incoming.index[incoming["date"] >= target]
         if shift_rows.empty:
-            st.error("This CSV does not contain the documented demand-shift date.")
+            st.error(f"This CSV does not contain {target.date()}.")
         else:
             shift_index = int(shift_rows[0])
             baseline_start = max(0, shift_index - (ROLLING_WINDOW * 2))
@@ -237,20 +259,24 @@ def render_monitoring_tab(model) -> None:
                 st.session_state.monitor_history = baseline_history
                 st.session_state.monitor_index = shift_index
                 st.success(
-                    "Jumped to 1 September 2026 and loaded the previous 48 hours for comparison. "
-                    "Click **Next hour** to begin the shifted-demand period."
+                    f"Jumped to {target.date()} and loaded the previous 48 hours for comparison. "
+                    "Click **Play** or **Next hour** to continue."
                 )
-    if next_clicked:
+    if next_clicked or (st.session_state.monitor_playing and not play_clicked and not jump_clicked and not data_jump_clicked):
         row = incoming.iloc[st.session_state.monitor_index]
         try:
             monitoring_record = process_monitoring_record(model, row)
         except (InputValidationError, PredictionError) as error:
+            st.session_state.monitor_playing = False
             st.error(f"This record could not be processed: {error}")
         except Exception:
+            st.session_state.monitor_playing = False
             st.error("An unexpected prediction error occurred. The simulation was not advanced.")
         else:
             st.session_state.monitor_history.append(monitoring_record)
             st.session_state.monitor_index += 1
+            if st.session_state.monitor_index >= len(incoming):
+                st.session_state.monitor_playing = False
 
     history = pd.DataFrame(st.session_state.monitor_history)
     if history.empty:
@@ -273,6 +299,13 @@ def render_monitoring_tab(model) -> None:
         st.metric("Cumulative MAE", f"{cumulative_mae:.2f}", border=True)
         st.metric(f"Rolling MAE ({ROLLING_WINDOW} hours)", f"{rolling_mae:.2f}", border=True)
         st.metric("Progress", f"{st.session_state.monitor_index:,}/{len(incoming):,}", border=True)
+    recent_promotions = history["promotion"].tail(48)
+    st.metric(
+        "Percent-off promotions (last 48 hours)",
+        f"{recent_promotions.eq('percent_off').mean():.0%}", border=True,
+    )
+    if latest["date"] >= DATA_DRIFT_START:
+        st.caption("Purple marker: the simulated promotion mix changes on 1 October (data drift).")
 
     warning_message = monitoring_warning(history)
     if warning_message:
